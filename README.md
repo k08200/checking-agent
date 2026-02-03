@@ -1,4 +1,4 @@
-# @autobe/estimate
+# 코드 평가 에이전트
 
 A code quality evaluation tool for AutoBE-generated code.
 
