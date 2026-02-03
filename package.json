@@ -1,32 +1,282 @@
 {
   "name": "@autobe/estimate",
   "version": "0.1.0",
-  "description": "Code quality evaluation system for AutoBE generated code",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "bin": {
-    "estimate": "./dist/bin/estimate.js"
+  "description": "Code quality evaluation tool for AutoBE-generated code",
+
+  "grading": {
+    "A": { "min": 90, "max": 100, "description": "Excellent - Production ready" },
+    "B": { "min": 80, "max": 89, "description": "Good - Minor improvements needed" },
+    "C": { "min": 70, "max": 79, "description": "Average - Several issues to address" },
+    "D": { "min": 60, "max": 69, "description": "Below Average - Significant issues" },
+    "F": { "min": 0, "max": 59, "description": "Fail - Major issues or Gate failure" }
   },
-  "scripts": {
-    "build": "tsc",
-    "start": "ts-node src/bin/estimate.ts",
-    "dev": "ts-node-dev src/bin/estimate.ts",
-    "test": "vitest",
-    "lint": "eslint src --ext .ts"
+
+  "phases": {
+    "gate": {
+      "name": "Gate",
+      "weight": null,
+      "description": "Basic validation - must pass to continue",
+      "passRequired": true,
+      "autobePhase": null,
+      "evaluators": [
+        {
+          "name": "SyntaxEvaluator",
+          "description": "TypeScript syntax validation",
+          "failCondition": "Any file fails to parse"
+        },
+        {
+          "name": "TypeEvaluator",
+          "description": "Type checking (tsc --noEmit)",
+          "failCondition": "TypeScript compiler returns errors"
+        },
+        {
+          "name": "PrismaEvaluator",
+          "description": "Prisma schema validation",
+          "failCondition": "prisma validate fails"
+        }
+      ]
+    },
+
+    "requirements": {
+      "name": "Requirements",
+      "weight": 0.2,
+      "description": "Requirements coverage evaluation",
+      "autobePhase": "Analyze",
+      "targetFolder": "docs/analysis/",
+      "evaluators": [
+        {
+          "name": "RequirementsEvaluator",
+          "description": "Checks for requirements documentation",
+          "scoring": {
+            "documentsExist": 100,
+            "noDocuments": 80
+          }
+        }
+      ]
+    },
+
+    "database": {
+      "name": "DB Design",
+      "weight": 0.15,
+      "description": "Database schema design evaluation",
+      "autobePhase": "Database",
+      "targetFolder": "prisma/schema/",
+      "evaluators": [
+        {
+          "name": "NamingEvaluator",
+          "description": "Schema naming conventions"
+        },
+        {
+          "name": "JsDocEvaluator",
+          "description": "Schema documentation"
+        }
+      ]
+    },
+
+    "api": {
+      "name": "API Design",
+      "weight": 0.2,
+      "description": "API interface design evaluation",
+      "autobePhase": "Interface",
+      "targetFolders": ["src/controllers/", "src/api/structures/"],
+      "evaluators": [
+        {
+          "name": "NamingEvaluator",
+          "description": "Naming conventions for controllers and DTOs",
+          "issues": [
+            { "code": "N001", "severity": "warning", "message": "Class should be PascalCase" },
+            { "code": "N002", "severity": "warning", "message": "Interface should be PascalCase" }
+          ]
+        },
+        {
+          "name": "JsDocEvaluator",
+          "description": "JSDoc documentation for public APIs",
+          "issues": [
+            { "code": "J001", "severity": "suggestion", "message": "Class missing JSDoc" },
+            { "code": "J002", "severity": "suggestion", "message": "Interface missing JSDoc" }
+          ]
+        },
+        {
+          "name": "ComplexityEvaluator",
+          "description": "Cyclomatic complexity of controller methods",
+          "thresholds": { "critical": 20, "warning": 15 },
+          "issues": [
+            { "code": "C001", "severity": "critical", "message": "Complexity exceeds 20" },
+            { "code": "C002", "severity": "warning", "message": "Complexity exceeds 15" }
+          ]
+        },
+        {
+          "name": "ValidationEvaluator",
+          "description": "Input validation (any type usage)",
+          "issues": [
+            { "code": "V001", "severity": "warning", "message": "Parameter uses any type" }
+          ]
+        },
+        {
+          "name": "HallucinationEvaluator",
+          "description": "Detects non-existent package imports",
+          "issues": [
+            { "code": "H001", "severity": "critical", "message": "Package not in package.json" }
+          ]
+        }
+      ]
+    },
+
+    "test": {
+      "name": "Test",
+      "weight": 0.2,
+      "description": "Test quality evaluation",
+      "autobePhase": "Test",
+      "targetFolder": "test/features/api/",
+      "evaluators": [
+        {
+          "name": "TestRunnerEvaluator",
+          "description": "Test file existence and coverage",
+          "scoring": {
+            "testsExist": 80,
+            "noTests": 50
+          }
+        },
+        {
+          "name": "SecurityEvaluator",
+          "description": "Security patterns in tests (relaxed for test files)",
+          "note": "Hardcoded credentials in tests are flagged as suggestions, not critical"
+        },
+        {
+          "name": "ErrorHandlingEvaluator",
+          "description": "Error handling in test code",
+          "issues": [
+            { "code": "E001", "severity": "warning", "message": "Empty catch block" },
+            { "code": "E002", "severity": "warning", "message": "Promise without .catch()" }
+          ]
+        }
+      ]
+    },
+
+    "implementation": {
+      "name": "Implementation",
+      "weight": 0.25,
+      "description": "Business logic implementation evaluation",
+      "autobePhase": "Realize",
+      "targetFolder": "src/providers/",
+      "evaluators": [
+        {
+          "name": "ComplexityEvaluator",
+          "description": "Cyclomatic complexity of provider methods",
+          "thresholds": { "critical": 20, "warning": 15 }
+        },
+        {
+          "name": "DuplicationEvaluator",
+          "description": "Duplicate code detection",
+          "config": { "minLines": 10, "minChars": 100 },
+          "issues": [
+            { "code": "D001", "severity": "warning", "message": "Duplicate code block found" }
+          ]
+        },
+        {
+          "name": "SecurityEvaluator",
+          "description": "Security vulnerability detection",
+          "issues": [
+            { "code": "S001", "severity": "critical", "message": "Hardcoded password" },
+            { "code": "S002", "severity": "critical", "message": "Hardcoded API key" },
+            { "code": "S003", "severity": "critical", "message": "Hardcoded secret" },
+            { "code": "S004", "severity": "critical", "message": "eval() usage" },
+            { "code": "S005", "severity": "warning", "message": "innerHTML usage (XSS risk)" }
+          ]
+        },
+        {
+          "name": "ErrorHandlingEvaluator",
+          "description": "Error handling patterns"
+        },
+        {
+          "name": "TodoEvaluator",
+          "description": "TODO/FIXME comment detection",
+          "issues": [
+            { "code": "T001", "severity": "warning", "message": "TODO comment" },
+            { "code": "T002", "severity": "critical", "message": "FIXME comment" }
+          ]
+        },
+        {
+          "name": "IncompleteEvaluator",
+          "description": "Incomplete implementation detection",
+          "issues": [
+            { "code": "I001", "severity": "critical", "message": "throw new Error('not implemented')" },
+            { "code": "I002", "severity": "critical", "message": "// implement this comment" }
+          ]
+        }
+      ]
+    }
   },
-  "dependencies": {
-    "commander": "^12.0.0",
-    "typescript": "^5.3.0",
-    "chalk": "^4.1.2",
-    "glob": "^10.3.0"
+
+  "scoring": {
+    "severityWeights": {
+      "critical": 10,
+      "warning": 3,
+      "suggestion": 1
+    },
+    "phaseScoreFormula": "100 - (weightedIssues / totalFiles) * 10",
+    "totalScoreFormula": "requirements * 0.2 + database * 0.15 + api * 0.2 + test * 0.2 + implementation * 0.25",
+    "gateFailure": "If Gate fails, total score = 0"
   },
-  "devDependencies": {
-    "@types/node": "^20.10.0",
-    "ts-node": "^10.9.0",
-    "ts-node-dev": "^2.0.0",
-    "vitest": "^1.2.0"
+
+  "targetFolders": {
+    "controllers": {
+      "path": "src/controllers/",
+      "autobePhase": "Interface",
+      "description": "API endpoint handlers"
+    },
+    "providers": {
+      "path": "src/providers/",
+      "autobePhase": "Realize",
+      "description": "Business logic implementation"
+    },
+    "structures": {
+      "path": "src/api/structures/",
+      "autobePhase": "Interface",
+      "description": "DTOs and request/response types"
+    },
+    "tests": {
+      "path": "test/features/api/",
+      "autobePhase": "Test",
+      "description": "E2E test files"
+    },
+    "prisma": {
+      "path": "prisma/schema/",
+      "autobePhase": "Database",
+      "description": "Prisma schema files"
+    },
+    "requirements": {
+      "path": "docs/analysis/",
+      "autobePhase": "Analyze",
+      "description": "Requirements documents"
+    }
   },
-  "engines": {
-    "node": ">=18"
+
+  "issueExplanations": {
+    "S001": "Hardcoded passwords can be exposed in source control",
+    "S002": "API keys should be stored in environment variables",
+    "S003": "Secrets should never be committed to code",
+    "S004": "eval() can execute arbitrary code (security risk)",
+    "S005": "innerHTML can lead to XSS attacks",
+    "C001": "Function is too complex, consider breaking it into smaller functions",
+    "C002": "Consider simplifying this function",
+    "N001": "Classes should use PascalCase (e.g., UserService)",
+    "N002": "Interfaces should use PascalCase (e.g., IUserData)",
+    "J001": "Add JSDoc comments for better API documentation",
+    "J002": "Interface documentation helps with code understanding",
+    "D001": "Extract common code into a shared function or module",
+    "E001": "Empty catch blocks hide errors, add proper handling",
+    "E002": "Unhandled Promise rejections can crash the application",
+    "V001": "Avoid 'any' type, use proper TypeScript types",
+    "H001": "Package does not exist in package.json, may cause runtime error",
+    "T001": "TODO comments indicate incomplete work",
+    "T002": "FIXME indicates a known bug that needs fixing",
+    "I001": "This code is not implemented yet",
+    "I002": "Placeholder that needs actual implementation"
+  },
+
+  "outputs": {
+    "markdown": "estimate-report.md",
+    "json": "estimate-report.json"
   }
 }
