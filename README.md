@@ -1,6 +1,6 @@
 # @autobe/estimate
 
-A comprehensive code quality evaluation tool for AutoBE-generated code.
+A code quality evaluation tool for AutoBE-generated code.
 
 ## Table of Contents
 
@@ -46,11 +46,11 @@ AutoBE is an automated backend code generation system that uses Large Language M
 
 LLM-generated code often contains issues that differ from human-written code:
 
-- **Hallucinated imports**: Importing packages that don't exist
-- **Incomplete implementations**: `throw new Error("not implemented")`
-- **TODO comments left behind**: Placeholders never filled in
-- **Security issues**: Hardcoded credentials, eval() usage
-- **High complexity**: Overly complex functions
+- Hallucinated imports: Importing packages that don't exist
+- Incomplete implementations: `throw new Error("not implemented")`
+- TODO comments left behind: Placeholders never filled in
+- Security issues: Hardcoded credentials, eval() usage
+- High complexity: Overly complex functions
 
 This tool detects these issues and provides a quality score.
 
@@ -58,12 +58,8 @@ This tool detects these issues and provides a quality score.
 
 ## Installation
 
-### Prerequisites
+You'll need Node.js 18+ and pnpm 8+ installed.
 
-- Node.js >= 18.0.0
-- pnpm >= 8.0.0
-
-### Steps
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -79,6 +75,7 @@ cd packages/estimate
 ---
 
 ## Quick Start
+
 ```bash
 # Evaluate a project
 pnpm start --input /path/to/autobe-project --output ./reports --verbose
@@ -91,12 +88,13 @@ pnpm start --input ~/autobe-examples/anthropic/claude-sonnet-4.5/todo --output .
 
 ## CLI Reference
 
-### Basic Syntax
+Basic syntax:
+
 ```bash
 pnpm start --input <path> --output <path> [options]
 ```
 
-### Options
+Options:
 
 | Option | Alias | Description | Required | Default |
 |--------|-------|-------------|----------|---------|
@@ -105,7 +103,8 @@ pnpm start --input <path> --output <path> [options]
 | `--verbose` | `-v` | Enable detailed logging | No | false |
 | `--continue-on-gate-failure` | - | Continue evaluation even if Gate phase fails | No | false |
 
-### Examples
+Some examples:
+
 ```bash
 # Basic evaluation
 pnpm start -i ./my-project -o ./reports
@@ -123,38 +122,9 @@ pnpm start -i ./my-project -o ./reports --continue-on-gate-failure
 
 ### Phase Overview
 
-The evaluation follows AutoBE's 5-phase structure:
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         GATE                                 │
-│              (Must Pass - Otherwise Score = 0)               │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐            │
-│  │   Syntax    │ │    Type     │ │   Prisma    │            │
-│  │  Evaluator  │ │  Evaluator  │ │  Evaluator  │            │
-│  └─────────────┘ └─────────────┘ └─────────────┘            │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    SCORING PHASES                            │
-│                                                              │
-│  ┌─────────────────┐  ┌─────────────────┐                   │
-│  │  Functionality  │  │     Quality     │                   │
-│  │      40%        │  │       30%       │                   │
-│  └─────────────────┘  └─────────────────┘                   │
-│                                                              │
-│  ┌─────────────────┐  ┌─────────────────┐                   │
-│  │     Safety      │  │   LLM Specific  │                   │
-│  │      20%        │  │       10%       │                   │
-│  └─────────────────┘  └─────────────────┘                   │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-                    ┌───────────────┐
-                    │  Total Score  │
-                    │   (0-100)     │
-                    └───────────────┘
-```
+The evaluation follows AutoBE's 5-phase structure. First, there's a Gate phase that must pass - if it fails, the total score is 0. The Gate phase runs three evaluators: Syntax Evaluator, Type Evaluator, and Prisma Evaluator.
+
+Once the Gate passes, the scoring phases kick in. Functionality accounts for 40% of the score, Quality for 30%, Safety for 20%, and LLM Specific for 10%. These all feed into the final total score, which ranges from 0 to 100.
 
 ### Grading Scale
 
@@ -172,68 +142,55 @@ The evaluation follows AutoBE's 5-phase structure:
 
 ### 1. Gate Phase (Pass/Fail)
 
-**Purpose**: Ensure basic code validity before detailed analysis.
-
-> ⚠️ If Gate fails, total score = 0
+The Gate phase ensures basic code validity before detailed analysis. If Gate fails, total score = 0.
 
 | Evaluator | What it Checks | Failure Condition |
 |-----------|----------------|-------------------|
-| **SyntaxEvaluator** | TypeScript syntax validity | Any file fails to parse |
-| **TypeEvaluator** | TypeScript type correctness | `tsc --noEmit` returns errors |
-| **PrismaEvaluator** | Prisma schema validity | `prisma validate` fails |
+| SyntaxEvaluator | TypeScript syntax validity | Any file fails to parse |
+| TypeEvaluator | TypeScript type correctness | `tsc --noEmit` returns errors |
+| PrismaEvaluator | Prisma schema validity | `prisma validate` fails |
 
 ---
 
 ### 2. Functionality Phase (40% Weight)
 
-**Purpose**: Evaluate requirements coverage and test existence.
-
-**AutoBE Phase**: Analyze, Test
+This phase evaluates requirements coverage and test existence. It corresponds to AutoBE's Analyze and Test phases.
 
 | Evaluator | What it Checks | Scoring |
 |-----------|----------------|---------|
-| **RequirementsEvaluator** | Existence of `docs/analysis/` | Exists: 100, Missing: 80 |
-| **TestRunnerEvaluator** | Existence of test files in `test/` | Exists: 80, Missing: 50 |
+| RequirementsEvaluator | Existence of `docs/analysis/` | Exists: 100, Missing: 80 |
+| TestRunnerEvaluator | Existence of test files in `test/` | Exists: 80, Missing: 50 |
 
-**Final Score**: Average of both evaluators
+Final Score is the average of both evaluators.
 
 ---
 
 ### 3. Quality Phase (30% Weight)
 
-**Purpose**: Evaluate code quality and maintainability.
-
-**AutoBE Phase**: Database, Interface, Realize
+This phase evaluates code quality and maintainability. It corresponds to AutoBE's Database, Interface, and Realize phases.
 
 | Evaluator | What it Checks | Issues |
 |-----------|----------------|--------|
-| **ComplexityEvaluator** | Cyclomatic complexity of functions | C001 (Critical): >20, C002 (Warning): >15 |
-| **NamingEvaluator** | Naming conventions | N001: Class not PascalCase, N002: Interface not PascalCase |
-| **JsDocEvaluator** | JSDoc documentation on classes/interfaces | J001: Missing class JSDoc, J002: Missing interface JSDoc |
-| **DuplicationEvaluator** | Duplicate code blocks (≥6 lines) | D001: Duplicate code detected |
+| ComplexityEvaluator | Cyclomatic complexity of functions | C001 (Critical): >20, C002 (Warning): >15 |
+| NamingEvaluator | Naming conventions | N001: Class not PascalCase, N002: Interface not PascalCase |
+| JsDocEvaluator | JSDoc documentation on classes/interfaces | J001: Missing class JSDoc, J002: Missing interface JSDoc |
+| DuplicationEvaluator | Duplicate code blocks (6+ lines) | D001: Duplicate code detected |
 
-#### Complexity Thresholds
-```
-Complexity 1-15:  ✅ OK
-Complexity 16-20: ⚠️ Warning (C002)
-Complexity 21+:   ❌ Critical (C001)
-```
+Complexity thresholds work like this: complexity between 1-15 is fine, 16-20 triggers a warning (C002), and 21+ is critical (C001).
 
 ---
 
 ### 4. Safety Phase (20% Weight)
 
-**Purpose**: Detect security vulnerabilities and error handling issues.
-
-**AutoBE Phase**: All phases
+This phase detects security vulnerabilities and error handling issues. It applies to all AutoBE phases.
 
 | Evaluator | What it Checks | Issues |
 |-----------|----------------|--------|
-| **SecurityEvaluator** | Security vulnerabilities | S001-S005 |
-| **ErrorHandlingEvaluator** | Error handling patterns | E001-E002 |
-| **ValidationEvaluator** | Input validation | V001 |
+| SecurityEvaluator | Security vulnerabilities | S001-S005 |
+| ErrorHandlingEvaluator | Error handling patterns | E001-E002 |
+| ValidationEvaluator | Input validation | V001 |
 
-#### Security Patterns Detected
+Security patterns detected:
 
 | Code | Severity | Pattern | Risk |
 |------|----------|---------|------|
@@ -243,7 +200,7 @@ Complexity 21+:   ❌ Critical (C001)
 | S004 | Critical | `eval(...)` | Code injection risk |
 | S005 | Warning | `innerHTML = ...` | XSS vulnerability |
 
-#### Error Handling Patterns
+Error handling patterns:
 
 | Code | Severity | Pattern | Issue |
 |------|----------|---------|-------|
@@ -254,31 +211,24 @@ Complexity 21+:   ❌ Critical (C001)
 
 ### 5. LLM Specific Phase (10% Weight)
 
-**Purpose**: Detect issues commonly found in LLM-generated code.
-
-**AutoBE Phase**: All phases
+This phase detects issues commonly found in LLM-generated code. It applies to all AutoBE phases.
 
 | Evaluator | What it Checks | Issues |
 |-----------|----------------|--------|
-| **HallucinationEvaluator** | Non-existent package imports | H001: Package not in package.json |
-| **TodoEvaluator** | TODO/FIXME comments | T001 (Warning): TODO, T002 (Critical): FIXME |
-| **IncompleteEvaluator** | Incomplete implementations | I001-I002 |
+| HallucinationEvaluator | Non-existent package imports | H001: Package not in package.json |
+| TodoEvaluator | TODO/FIXME comments | T001 (Warning): TODO, T002 (Critical): FIXME |
+| IncompleteEvaluator | Incomplete implementations | I001-I002 |
 
-#### Hallucination Detection
+The hallucination detector checks if imported packages exist in `package.json`. For example:
 
-Checks if imported packages exist in `package.json`:
 ```typescript
-// ❌ H001: Package "@fake/package" not found in package.json
+// H001: Package "@fake/package" not found in package.json
 import { something } from "@fake/package";
 ```
 
-**Allowed packages** (not flagged even if not in package.json):
-- `@prisma/client`, `@prisma/sdk`
-- `@nestia/core`, `@nestia/fetcher`
-- `@nestjs/common`, `@nestjs/core`
-- Node.js built-ins (`fs`, `path`, `http`, etc.)
+Some packages are allowed even if they're not in package.json: `@prisma/client`, `@prisma/sdk`, `@nestia/core`, `@nestia/fetcher`, `@nestjs/common`, `@nestjs/core`, and Node.js built-ins (`fs`, `path`, `http`, etc.)
 
-#### Incomplete Implementation Patterns
+Incomplete implementation patterns:
 
 | Code | Severity | Pattern |
 |------|----------|---------|
@@ -300,6 +250,7 @@ Each issue has a severity that affects the score:
 | Suggestion | -1 | Nice to fix - minor improvement |
 
 ### Phase Score Calculation
+
 ```
 weightedIssues = (critical × 10) + (warning × 3) + (suggestion × 1)
 issueRatio = weightedIssues / totalFiles
@@ -307,19 +258,18 @@ phaseScore = max(0, min(100, 100 - issueRatio × 10))
 ```
 
 ### Total Score Calculation
+
 ```
 totalScore = (functionality × 0.4) + (quality × 0.3) + (safety × 0.2) + (llmSpecific × 0.1)
 ```
 
-> If Gate fails, totalScore = 0
+If Gate fails, totalScore = 0.
 
 ### Example Calculation
-```
-Files: 50
-Critical Issues: 2
-Warning Issues: 10
-Suggestions: 5
 
+Say you have 50 files, 2 critical issues, 10 warnings, and 5 suggestions:
+
+```
 weightedIssues = (2 × 10) + (10 × 3) + (5 × 1) = 20 + 30 + 5 = 55
 issueRatio = 55 / 50 = 1.1
 phaseScore = 100 - (1.1 × 10) = 89
@@ -340,12 +290,7 @@ The tool scans specific folders based on AutoBE's output structure:
 | `prisma/schema/` | Database | Prisma schema files | Gate (Prisma validation) |
 | `docs/analysis/` | Analyze | Requirements documents | Functionality |
 
-### Ignored Paths
-
-- `**/node_modules/**`
-- `**/dist/**`
-- `**/*.d.ts`
-- `**/*.js` (only `.ts` files are evaluated)
+Ignored paths: `**/node_modules/**`, `**/dist/**`, `**/*.d.ts`, `**/*.js` (only `.ts` files are evaluated)
 
 ---
 
@@ -355,15 +300,12 @@ Two report files are generated:
 
 ### 1. Markdown Report (`estimate-report.md`)
 
-Human-readable report with:
-- Overall score and grade
-- Phase-by-phase breakdown
-- List of all issues with locations
-- Summary statistics
+Human-readable report with overall score and grade, phase-by-phase breakdown, list of all issues with locations, and summary statistics.
 
 ### 2. JSON Report (`estimate-report.json`)
 
 Machine-readable report for CI/CD integration:
+
 ```json
 {
   "targetPath": "/path/to/project",
@@ -390,6 +332,7 @@ Machine-readable report for CI/CD integration:
 ## Examples
 
 ### Example 1: Evaluating Claude-generated Code
+
 ```bash
 pnpm start \
   --input ~/autobe-examples/anthropic/claude-sonnet-4.5/todo \
@@ -397,21 +340,23 @@ pnpm start \
   --verbose
 ```
 
-**Output:**
-```
-📊 Total Score: 74/100 (Grade: C)
+Output:
 
-   Gate:          ✅ Pass
+```
+Total Score: 74/100 (Grade: C)
+
+   Gate:          Pass
    Functionality: 90/100
    Quality:       25/100
    Safety:        100/100
    LLM Specific:  100/100
 
-⚠️  Warnings: 947
-💡 Suggestions: 9
+Warnings: 947
+Suggestions: 9
 ```
 
 ### Example 2: Comparing Multiple Models
+
 ```bash
 # Claude Sonnet 4.5
 pnpm start -i ~/autobe-examples/anthropic/claude-sonnet-4.5/todo -o ./reports/claude
@@ -424,6 +369,7 @@ pnpm start -i ~/autobe-examples/google/gemini-2.5-pro/todo -o ./reports/gemini
 ```
 
 ### Example 3: CI/CD Integration
+
 ```yaml
 # .github/workflows/evaluate.yml
 - name: Evaluate Generated Code
@@ -442,34 +388,20 @@ pnpm start -i ~/autobe-examples/google/gemini-2.5-pro/todo -o ./reports/gemini
 
 ### Gate Fails: Prisma Validation Error
 
-**Problem**: `[P001] Prisma schema validation failed`
-
-**Solution**:
-1. Check if `prisma/schema/` exists
-2. Run `npx prisma validate` manually to see detailed error
-3. Ensure Prisma CLI is installed
+If you see `[P001] Prisma schema validation failed`, check if `prisma/schema/` exists. Run `npx prisma validate` manually to see the detailed error. Make sure Prisma CLI is installed.
 
 ### Gate Fails: Type Errors
 
-**Problem**: `tsc --noEmit` returns errors
-
-**Solution**:
-1. Check if `tsconfig.json` exists
-2. Run `npx tsc --noEmit` manually to see errors
-3. Ensure all dependencies are installed (`pnpm install`)
+If `tsc --noEmit` returns errors, check if `tsconfig.json` exists. Run `npx tsc --noEmit` manually to see the errors. Make sure all dependencies are installed with `pnpm install`.
 
 ### No Files Found
 
-**Problem**: `Found 0 TypeScript files`
-
-**Solution**:
-1. Verify the input path is correct
-2. Check if the project follows AutoBE folder structure
-3. Ensure files have `.ts` extension
+If you see `Found 0 TypeScript files`, verify the input path is correct, check if the project follows AutoBE folder structure, and ensure files have `.ts` extension.
 
 ### Use --continue-on-gate-failure
 
 To debug issues, run with this flag to see all evaluation results:
+
 ```bash
 pnpm start -i ./project -o ./reports --continue-on-gate-failure -v
 ```
@@ -477,33 +409,20 @@ pnpm start -i ./project -o ./reports --continue-on-gate-failure -v
 ---
 
 ## Project Structure
-```
-packages/estimate/
-├── src/
-│   ├── bin/
-│   │   └── estimate.ts          # CLI entry point
-│   ├── cli.ts                   # CLI argument parsing
-│   ├── core/
-│   │   ├── context-builder.ts   # Project scanning
-│   │   └── pipeline.ts          # Evaluation orchestration
-│   ├── evaluators/
-│   │   ├── base.ts              # Base evaluator classes
-│   │   ├── gate/                # Gate evaluators
-│   │   ├── quality/             # Quality evaluators
-│   │   ├── safety/              # Safety evaluators
-│   │   ├── llm-specific/        # LLM-specific evaluators
-│   │   └── functionality/       # Functionality evaluators
-│   ├── reporters/
-│   │   ├── json.reporter.ts     # JSON report generator
-│   │   └── markdown.reporter.ts # Markdown report generator
-│   ├── types/                   # TypeScript type definitions
-│   └── index.ts                 # Package exports
-├── reports/                     # Generated reports
-├── README.md                    # This file
-├── evaluation-criteria.json     # Evaluation criteria config
-├── package.json
-└── tsconfig.json
-```
+
+The main package lives in `packages/estimate/`.
+
+The CLI entry point is `src/bin/estimate.ts`, which handles command invocation. Argument parsing happens in `src/cli.ts`.
+
+The core logic is split into two files: `src/core/context-builder.ts` handles project scanning and gathering file information, while `src/core/pipeline.ts` orchestrates the entire evaluation flow.
+
+Evaluators are organized by category under `src/evaluators/`. The `base.ts` file contains base evaluator classes that others extend. Gate evaluators live in the `gate/` subdirectory, quality evaluators in `quality/`, safety evaluators in `safety/`, LLM-specific evaluators in `llm-specific/`, and functionality evaluators in `functionality/`.
+
+Report generation is handled by `src/reporters/`. The `json.reporter.ts` generates machine-readable JSON output, and `markdown.reporter.ts` produces human-readable markdown reports.
+
+TypeScript type definitions are in `src/types/`, and `src/index.ts` handles package exports.
+
+Generated reports go into the `reports/` directory. Configuration for evaluation criteria is in `evaluation-criteria.json`. The standard `package.json` and `tsconfig.json` files are at the package root.
 
 ---
 
